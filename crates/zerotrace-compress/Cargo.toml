@@ -1,0 +1,10 @@
+[package]
+name = "zerotrace-compress"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zstd = "0.13"
+serde.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }

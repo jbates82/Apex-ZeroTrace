@@ -1,0 +1,20 @@
+[package]
+name = "zerotrace-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ztd"
+path = "src/main.rs"
+
+[dependencies]
+zerotrace-core = { path = "../../crates/zerotrace-core" }
+zerotrace-audit = { path = "../../crates/zerotrace-audit" }
+zerotrace-auth = { path = "../../crates/zerotrace-auth" }
+zerotrace-journal = { path = "../../crates/zerotrace-journal" }
+zerotrace-policy = { path = "../../crates/zerotrace-policy" }
+zerotrace-presence = { path = "../../crates/zerotrace-presence" }
+zerotrace-destroy = { path = "../../crates/zerotrace-destroy" }
+zerotrace-sanitize = { path = "../../crates/zerotrace-sanitize" }
+zerotrace-platform = { path = "../../crates/zerotrace-platform" }

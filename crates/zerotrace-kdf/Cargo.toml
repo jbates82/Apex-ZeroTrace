@@ -1,0 +1,11 @@
+[package]
+name = "zerotrace-kdf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+argon2 = "0.5"
+serde.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }

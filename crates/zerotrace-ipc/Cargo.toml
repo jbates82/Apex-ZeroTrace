@@ -1,0 +1,31 @@
+[package]
+name = "zerotrace-ipc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+uuid.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-audit = { path = "../zerotrace-audit" }
+zerotrace-auth = { path = "../zerotrace-auth" }
+zerotrace-destroy = { path = "../zerotrace-destroy" }
+zerotrace-journal = { path = "../zerotrace-journal" }
+zerotrace-policy = { path = "../zerotrace-policy" }
+zerotrace-presence = { path = "../zerotrace-presence" }
+zerotrace-sanitize = { path = "../zerotrace-sanitize" }
+zerotrace-vault = { path = "../zerotrace-vault" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }
+
+zerotrace-split = { path = "../zerotrace-split" }
+zerotrace-remote = { path = "../zerotrace-remote" }
+zerotrace-format = { path = "../zerotrace-format" }
+zerotrace-kdf = { path = "../zerotrace-kdf" }
+
+zerotrace-platform = { path = "../zerotrace-platform" }
+
+[dev-dependencies]
+tempfile = "3"
+zerotrace-compress = { path = "../zerotrace-compress" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }

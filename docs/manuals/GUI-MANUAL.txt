@@ -1,0 +1,965 @@
+================================================================================
+APEX ZEROTRACE
+User Manual for the Desktop Window
+Applies to version 0.21.0
+================================================================================
+
+This manual describes every part of the ZeroTrace window. It assumes you have
+never used an encrypted vault before and explains terms as it goes. A glossary
+is at the end.
+
+If you prefer to type commands, there is a separate manual, CLI-MANUAL.txt,
+covering the same features from a terminal.
+
+
+--------------------------------------------------------------------------------
+CONTENTS
+--------------------------------------------------------------------------------
+
+  1.  What this program is for
+  2.  What it cannot do
+  3.  Starting the program
+  4.  The parts of the window
+  5.  Creating your first vault
+  6.  Adding files
+  7.  Getting files back out
+  8.  Checking that nothing is damaged
+  9.  Key protection: what it is and why you might want it
+  10. Setting up key protection
+  11. Where to keep your two tokens
+  12. Opening a protected vault
+  13. If you lose your password
+  14. The deadman switch
+  15. Turning the deadman switch on
+  16. Starting and stopping the service
+  17. Destroying a vault on purpose
+  18. The Records section
+  19. A suggested first hour
+  20. If something goes wrong
+  21. Glossary
+
+
+--------------------------------------------------------------------------------
+1. WHAT THIS PROGRAM IS FOR
+--------------------------------------------------------------------------------
+
+A vault is a single file on your computer that holds other files inside it, in
+scrambled form. Without your password, nobody can read what is in it.
+
+The scrambling covers more than the contents. The names of your files, how big
+they are, and when they were last changed are all hidden too. Somebody who
+finds the vault file cannot tell whether it holds photographs, tax records or
+nothing much at all.
+
+The program can also do something unusual, which is where its name comes from.
+You can set a deadline. If you do not check in before that deadline passes, the
+program destroys the key to the vault, and everything inside becomes permanently
+unreadable. This is called a deadman switch. It is switched off unless you turn
+it on deliberately.
+
+Your original files are not moved or altered when you add them to a vault. A
+copy goes in. If you want the original gone afterwards, you delete it yourself.
+
+
+--------------------------------------------------------------------------------
+2. WHAT IT CANNOT DO
+--------------------------------------------------------------------------------
+
+        ================================================================
+         BEFORE YOU TRUST A VAULT WITH ANYTHING THAT MATTERS
+        ================================================================
+
+        A vault protects what is inside it. It says nothing about where
+        that file has been.
+
+        Every file you put in a vault existed somewhere first, on an
+        ordinary unencrypted disk. Deleting the original afterwards does
+        not remove it: deleting takes the name off a list and leaves the
+        contents on the disk, where free recovery programs will find
+        them. Emptying the recycle bin does not change that.
+
+        It is worse than the one file. Editors leave automatic backup
+        copies. Your computer keeps thumbnails and search indexes of what
+        is inside your documents. Windows and Mac take automatic system
+        snapshots without asking. Cloud folders keep their own copies.
+        Solid state drives keep spare space no program can reach.
+
+        This is not something ZeroTrace can fix. The file was there
+        before this program saw it.
+
+        THE ONE THING TO DO ABOUT IT
+
+        Turn on full-disk encryption: BitLocker on Windows, FileVault on
+        a Mac, LUKS on Linux. Use a real passphrase. Then all of those
+        leftovers are encrypted too, and somebody with your powered-off
+        computer has to break that before any of this matters.
+
+        Shut your computer down rather than leaving it asleep. A sleeping
+        computer is holding the key.
+
+        docs/BEFORE-THE-VAULT.txt explains the rest, including what to do
+        for genuinely sensitive material and which popular remedies do
+        not work.
+
+
+
+This section is near the front on purpose. Knowing the limits is part of using
+the program safely.
+
+It cannot recover a lost password. If you have not set up key protection and
+you forget your password, the vault is unreadable for ever. Nobody can help,
+including the people who wrote the program.
+
+It cannot protect copies you already made. If you backed a vault up and then
+destroyed the original, the backup still opens with your password. Destroying a
+vault protects that file, not copies of it elsewhere.
+
+That includes copies your operating system made without asking. Windows System
+Protection and macOS local snapshots are on by default, and a snapshot taken
+before you destroyed a vault holds its own copy with the key intact. Run
+`zt platform report` to see whether your vault sits somewhere that happens.
+
+ZeroTrace does not delete snapshots and will not: that needs administrator
+rights and is the most recognisable thing ransomware does. Keep vaults on a
+removable drive instead, or use remote custody, which a snapshot cannot capture
+because the component was never on the machine.
+
+It cannot protect you from somebody already inside your computer while the
+vault is unlocked. At that moment the files are readable by you, and therefore
+by anything running as you.
+
+It cannot stop somebody with your computer from closing the watcher. Nothing
+can: a hidden program is visible in the task list, refusing to close is
+defeated by ending the task, and programs that restart each other are how
+malware behaves. What defends a vault against that person is KEY PROTECTION,
+not the deadline. Stopping the watcher gives them unlimited time to attack your
+vault, and against a split key unlimited time is worth nothing, because they
+hold one piece and need two.
+
+Two things do help. Stopping the watcher postpones nothing, because elapsed
+time comes from recorded timestamps rather than from counting: stop it for a
+week and the next run sees that a week has passed and acts at once. And it
+cannot be stopped quietly, because the next start records that the previous one
+ended without shutting down.
+
+It cannot notice if somebody takes your drive away and puts an older copy back.
+Detecting that needs hardware support this version does not have.
+
+It cannot enforce a deadline by itself. The window shows a countdown, but a
+separate background program has to be running for anything to happen. Section
+16 explains this.
+
+
+--------------------------------------------------------------------------------
+3. STARTING THE PROGRAM
+--------------------------------------------------------------------------------
+
+Run the program named "zerotrace" (on Windows, zerotrace.exe). You will find it
+in the folder target\release inside the project folder, if you built it
+yourself.
+
+You can also start it with a vault already selected by dragging a vault file
+onto it, or by naming the file after the program on a command line.
+
+Nothing is unlocked when the window opens. The program holds no keys until you
+give it a password, and it forgets them again as soon as each action finishes.
+
+
+--------------------------------------------------------------------------------
+4. THE PARTS OF THE WINDOW
+--------------------------------------------------------------------------------
+
+THE TOP BAR
+
+Shows the program name and, on the right, which vault file is currently
+selected. If it says "no vault selected", nothing has been chosen yet.
+
+THE SIDEBAR, on the left
+
+At the top is the current status:
+
+  A word in large letters. This is the state of the deadman switch:
+
+    NORMAL     everything is as it should be
+    WARNING    you have not checked in for a while
+    CRITICAL   you have not checked in for some time
+    ARMED      the deadline has passed
+    DESTROYED  this vault has been destroyed
+    LOCKED     no vault is open yet
+
+  Below that, a countdown showing how long until the deadline, or "off" if you
+  have not set a deadline.
+
+  Below that, a bar showing your presence score, with a small white mark
+  showing the score you have to stay above. Presence is explained in section 14.
+
+Then three buttons:
+
+  Check in   Tells the program you are here. Resets the countdown to full.
+             Asks for your password.
+
+  Unlock     Reads the vault so its contents can be listed. Asks for your
+             password. The keys are used for this one action and then
+             destroyed; there is no session left open afterwards.
+
+  Verify     Decrypts every stored file and checks it against a fingerprint
+             taken when it was stored, to find damage or tampering. This can
+             take a while on a large vault.
+
+Below those is the list of sections. Each one has a small line underneath
+summarizing it, so you can see most of what you need without clicking:
+
+  Vault           how many files are inside
+  Key protection  how many key pieces are needed, or "password only"
+  Deadman         whether a deadline is set
+  Records         whether the program's own logs check out
+  Destruction     whether this vault still exists
+  Guide           a short version of this manual, inside the program
+
+THE MAIN AREA
+
+Shows whichever section you have chosen. Each begins with a short explanation
+of what its controls do.
+
+THE BOTTOM BAR
+
+Shows the result of your last action. Green means it worked, red means it did
+not, gray is neutral information.
+
+
+--------------------------------------------------------------------------------
+5. CREATING YOUR FIRST VAULT
+--------------------------------------------------------------------------------
+
+Go to the Vault section and press Create.
+
+Choose where to save the vault and give it a name. The ending .azv is added for
+you. The vault is an ordinary file: you can move it, copy it or back it up like
+any other.
+
+You are then asked for a password. Choose carefully:
+
+  There is no way to reset it. This is the point of the design, not a missing
+  feature. A program that could let you back in without the password could let
+  somebody else in too.
+
+  Long is better than complicated. A phrase of several unrelated words is
+  easier to remember and harder to guess than a short word with symbols in it.
+
+  Consider a password manager. If you already use one, put it there.
+
+  At least 15 characters, built from at least six different ones. A long run of
+  a single character, or one short piece simply repeated, is refused however
+  long the result: "aaaaaaaaaaaaaaaaaaaa" is twenty characters and worthless.
+  Four or five unrelated words joined by dashes clears all of it without
+  effort.
+
+The window then shows what the vault uses:
+
+  Encryption      the scrambling method. XChaCha20-Poly1305 by default.
+  Key derivation  how your password is turned into a key. Argon2id, deliberately
+                  slow so that guessing many passwords is expensive.
+  Compression     files are shrunk before being scrambled, where that helps.
+  Factors         what is needed to open it. "password" at first.
+
+
+--------------------------------------------------------------------------------
+6. ADDING FILES
+--------------------------------------------------------------------------------
+
+In the Vault section, press "Add file" and choose a file. Enter your password.
+
+The file is compressed, scrambled and stored. Repeat for as many files as you
+want. There is no practical limit on size.
+
+Remember the original is untouched. Adding a file to a vault is copying it in,
+not moving it.
+
+
+--------------------------------------------------------------------------------
+7. GETTING FILES BACK OUT
+--------------------------------------------------------------------------------
+
+Press Unlock in the sidebar and enter your password. The Contents list in the
+Vault section then shows what is stored, with sizes.
+
+Press "Extract" beside a file, or "Extract all" at the top of the list, and
+choose a folder. The decrypted copies are written there.
+
+Extracting does not empty the vault. The vault keeps its own copy.
+
+An extraction either produces a complete, checked file or nothing at all. If a
+stored file turns out to be damaged partway through, whatever had already been
+decrypted is removed rather than left sitting there readable.
+
+If the program refuses with a message about a symbolic link, the folder you
+chose, or something above it, is a shortcut pointing somewhere else. Decrypted
+files would end up wherever it points rather than where you expect, so it stops
+instead. Choose an ordinary folder.
+
+Until you unlock, the list is empty and says so. That is normal, not a fault:
+the names are scrambled along with everything else, so there is genuinely
+nothing to show yet.
+
+If one stored file is damaged, the others are still extracted. You are told how
+many could not be recovered.
+
+
+--------------------------------------------------------------------------------
+8. CHECKING THAT NOTHING IS DAMAGED
+--------------------------------------------------------------------------------
+
+Press Verify in the sidebar and enter your password.
+
+Every stored file is decrypted and compared against a fingerprint recorded when
+it was added. You are told either that everything is intact, or how many pieces
+failed.
+
+This finds damage from a failing disk as well as deliberate tampering. It can
+be slow on a large vault because everything has to be read.
+
+This is different from the Records section, which checks the program's own logs
+rather than your files. Section 18 covers that.
+
+
+--------------------------------------------------------------------------------
+9. KEY PROTECTION: WHAT IT IS AND WHY YOU MIGHT WANT IT
+--------------------------------------------------------------------------------
+
+A password alone has a weakness that has nothing to do with how good the
+password is.
+
+If somebody takes the drive out of your computer and connects it to their own,
+they can copy your vault and then try passwords on it for as long as they like,
+in private, with nothing to stop them and nobody watching. Your deadman switch
+cannot help, because they are not running this program at all.
+
+Key protection changes what a stolen drive is worth.
+
+The key needed to open your vault is split into three pieces, and any two of
+them will open it. One piece is your password. The other two are small files
+called tokens, which you keep somewhere else.
+
+Somebody who steals the drive gets the vault file and, at worst, your password.
+That is one piece. They need two.
+
+WHY TWO OUT OF THREE AND NOT ALL THREE
+
+Requiring all three would sound stronger and would be worse. It would mean any
+single loss destroys everything: a broken computer, a lost USB stick, a
+forgotten password. That is a risk that happens on an ordinary Tuesday, unlike
+the burglary it defends against.
+
+Two out of three still defeats the stolen drive, and survives losing any one
+piece.
+
+The cost, stated plainly: whoever holds both tokens can open the vault without
+your password. That is why section 11 matters.
+
+
+--------------------------------------------------------------------------------
+10. SETTING UP KEY PROTECTION
+--------------------------------------------------------------------------------
+
+Go to Key protection and press "Protect".
+
+You are asked where to save two token files. Choose two different places. Then
+enter your password.
+
+This is quick even for a very large vault. Only a tiny part of the file changes;
+your stored files are not re-scrambled.
+
+Afterwards, your password alone will no longer open this vault, on this
+computer or any other.
+
+The section then shows:
+
+  Threshold      how many pieces are needed, out of how many exist
+  Components     which pieces exist
+  Drive theft    whether a stolen drive plus your password is enough
+  Losing one     whether you can survive losing a single piece
+
+Any weaknesses are listed underneath in amber. Read them. They are there
+because they are true, not as a formality.
+
+
+--------------------------------------------------------------------------------
+11. WHERE TO KEEP YOUR TWO TOKENS
+--------------------------------------------------------------------------------
+
+This is the most important practical decision in the program.
+
+NOT on the same drive as the vault. If a thief takes the drive and the tokens
+are on it, they have two pieces, and you have gained nothing whatsoever.
+
+Put the first token on a USB stick that you keep somewhere else: a different
+room, a car, a desk at work.
+
+Put the second somewhere different again: another building, a safe, a bank box,
+or with a person you trust.
+
+Do NOT keep both tokens together. Any two pieces open the vault. Both tokens in
+one drawer means that drawer opens your vault without your password ever being
+involved.
+
+Do not lose them either. With three pieces and two needed, losing one is
+survivable. Losing two is not.
+
+
+REMOTE CUSTODY
+
+At the bottom of Key protection is a panel called Remote custody. It is the
+only part of this program that somebody sitting at your computer cannot switch
+off.
+
+Everything else runs here. Whoever controls this machine can close the watcher,
+and no amount of hiding or restarting changes that. A custodian is different
+because it is not on this machine: it holds one of your three components and
+gives it back only while you keep checking in. Stop checking in, and it
+destroys that component.
+
+Press "Establish custody" and choose two things: a folder for the custodian,
+and the custodian token to hand over.
+
+The folder must not be on this computer. Another machine, a network share, a
+drive kept elsewhere. In the same folder as the vault it protects nothing, for
+the same reason a token stored beside the vault protects nothing.
+
+Afterwards, delete your local copy of the token you handed over. Keeping it
+puts the component back on this machine and undoes the arrangement.
+
+Press "Check in with custodian" to reset its deadline. This asks for your
+password, and that is the important part: the request is signed with a key
+derived from your password, so somebody who has your computer but not your
+password cannot check in on your behalf. If they crack the password after the
+deadline has passed, the component is already gone.
+
+The panel shows whether the custodian is reachable and how long it will hold
+the component. A custodian that cannot be reached today does not stop you
+opening the vault, provided your other components still add up to two.
+
+--------------------------------------------------------------------------------
+12. OPENING A PROTECTED VAULT
+--------------------------------------------------------------------------------
+
+Each time you start the program:
+
+  1. Go to Key protection.
+  2. Press "Add token" and choose one of your token files.
+  3. Use your password as normal.
+
+The token stays attached only while the program is running. Closing it forgets
+the token, deliberately: a program that remembered would eventually authorize
+something you did not expect.
+
+If you choose a file that is not a token, you are told immediately and it is
+ignored. Attaching the wrong file by mistake does no harm, and a wrong file
+does not interfere with a correct one.
+
+"Clear" removes attached tokens, if you want to start again.
+
+
+--------------------------------------------------------------------------------
+13. IF YOU LOSE YOUR PASSWORD
+--------------------------------------------------------------------------------
+
+If the vault is protected, your two tokens can open it without the password.
+
+  1. Attach both tokens using "Add token", one at a time.
+  2. Tick "Password lost".
+  3. Carry on as normal.
+
+If the vault is NOT protected, the vault cannot be opened. There is no recovery
+and no exception. This is the single strongest argument for setting up key
+protection.
+
+
+--------------------------------------------------------------------------------
+14. THE DEADMAN SWITCH
+--------------------------------------------------------------------------------
+
+The deadman switch destroys the vault if you stop checking in.
+
+It is off until you turn it on, and even then nothing happens unless a separate
+background program is running. Setting it up is safe by itself.
+
+CHECKING IN
+
+Pressing "Check in" and entering your password tells the program you are alive,
+well, and acting freely. It resets the countdown.
+
+The password matters here. If checking in cost nothing, anybody who could reach
+your computer could keep the vault alive indefinitely.
+
+THE THREE SETTINGS
+
+  Timeout
+    How long you can go without checking in before the vault is considered
+    abandoned. Choose from one hour up to thirty days.
+
+  Heartbeat
+    How often you intend to check in. Within this time, a check-in counts at
+    full value and nothing decays. After it, your presence score falls steadily
+    until the timeout is reached. A shorter heartbeat means a stricter switch.
+    Only intervals shorter than your timeout are offered.
+
+  Required confidence
+    The presence score you must stay above. The lowest offered is 70.
+
+    Entering your password scores 100. Weaker evidence, such as the computer
+    being switched on, reachable on the network, or having its keyboard used,
+    is capped at 60 in total however much of it there is.
+
+    That cap is why the setting cannot go below 61. None of that weaker
+    evidence proves anything about you: a burglar sitting at your desk produces
+    every one of those signs, and so does a machine left running in an empty
+    house. Above 60, only a real check-in can hold the deadline open.
+
+WHAT THE STATES MEAN
+
+  NORMAL     your presence score is above what you asked for
+  WARNING    it has fallen below
+  CRITICAL   it has fallen a long way below
+  ARMED      the timeout has passed
+
+Reaching ARMED does not destroy anything by itself. Destruction only happens if
+the background service is running AND has been given permission.
+
+Until then, checking in at any point returns you to NORMAL.
+
+
+--------------------------------------------------------------------------------
+15. TURNING THE DEADMAN SWITCH ON
+--------------------------------------------------------------------------------
+
+Go to the Deadman section, tick "Enabled", choose your three settings, and press
+"Save policy".
+
+While "Enabled" is unticked, the other settings are grayed out and no deadline
+is computed.
+
+If the settings are impossible together, "Save policy" stays grayed out and the
+reason is shown in red. The program will not save a policy that could never be
+satisfied.
+
+Saving does not arm anything. Read the next section.
+
+
+--------------------------------------------------------------------------------
+16. STARTING AND STOPPING THE SERVICE
+--------------------------------------------------------------------------------
+
+The window shows the countdown but never acts on it. Destruction is done by a
+separate program called ztd. Until ztd is running, your deadline is a display.
+
+The Deadman section shows which of these is true:
+
+  CONFIGURED, NOT ENFORCED     a policy exists but nothing is watching
+  WATCHING, WILL NOT DESTROY   ztd is running but cannot destroy
+  ENFORCED, CAN DESTROY        ztd is running and will destroy at the deadline
+
+Two buttons:
+
+  Start watching
+    Starts ztd without permission to destroy. It follows the countdown and
+    records what happens, and when the deadline passes it says so and keeps
+    watching without destroying anything. This is the safe way to see the
+    mechanism work.
+
+    If you use this and then wait for the deadline, nothing will be destroyed.
+    That is what it is for. To have the deadline actually enforced, you must
+    use "Start and arm" instead.
+
+  Start and arm
+    Starts ztd with permission to destroy. THIS IS THE ONE THAT ACTUALLY
+    ENFORCES THE DEADLINE. If you want the vault destroyed when the timeout
+    passes, this is the button you need.
+
+    It is locked until you have seen a dry run, on purpose: arming something
+    irreversible should not be one unread click. A "Run dry run now" button sits
+    directly above it, and takes a moment. After reading the dry run, come back
+    here and Start and arm becomes available.
+
+  Stop watching
+    Appears when a service is running. The program asks it to stop, and it exits
+    within a second or so.
+
+WHAT STARTING FROM HERE DOES AND DOES NOT SURVIVE
+
+It keeps running if you close this window, or if the window crashes.
+
+It does NOT survive logging out, restarting, or closing the console window it
+opened. For that, use "Restart at login", below.
+
+RESTART AT LOGIN
+
+Underneath the service buttons is a panel that registers the watcher to start
+again whenever you log in. This is what you want if the computer might be
+restarted, or run out of battery, or crash.
+
+  Install, watch only   comes back after a restart, but cannot destroy
+  Install and arm       comes back with permission to destroy. Grayed out
+                        until you have run a dry run.
+  Remove                stops it coming back
+
+This needs no administrator rights. It writes one small file to your own
+startup folder: your Startup folder on Windows, your own Library folder on a
+Mac, your own configuration folder on Linux. Nothing is installed for other
+people using the machine, and you can delete the file by hand if you prefer.
+
+The panel shows where the file was written.
+
+BE CLEAR ABOUT WHAT "AT LOGIN" MEANS
+
+The watcher starts when THIS ACCOUNT logs in. A computer sitting at its login
+screen is not watching anything.
+
+That is not a hole in the deadline itself: time still passes whether or not
+anything is running, and when the watcher does start it will notice a deadline
+that passed while the machine was off. But if your machine is stolen while
+logged out, protecting the vault is the job of key protection, not the deadman
+switch.
+
+If you want a vault watched whether or not anybody logs in, that needs a
+system-wide service, which does require administrator rights. From a terminal:
+
+    zt service unit yourvault.azv
+
+That prints a definition to review and hand to whoever administers the machine.
+
+ONE SERVICE PER VAULT
+
+Each vault is tracked separately. Starting a service for one vault says nothing
+about another, and you can watch several vaults at once.
+
+A second service on the same vault is refused, because two would interfere with
+each other and only the first could be stopped by name.
+
+If a service was stopped abruptly, the window says a previous service is no
+longer running and offers to clear the record.
+
+
+--------------------------------------------------------------------------------
+16B. THE DURESS PASSWORD
+--------------------------------------------------------------------------------
+
+The Duress section in the sidebar.
+
+A second password that opens the vault into different contents, and destroys
+the real ones as it does so. Quietly: somebody watching sees an ordinary vault
+open onto ordinary files.
+
+It is for the moment when somebody is standing over you demanding you open it.
+You open it. They see what you chose for them to see, and what mattered is
+already gone.
+
+SETTING ONE
+
+Go to the Duress section and press "Choose the files it will show".
+
+Pick files that ALREADY EXIST on your computer. This is not a save dialog and
+you are not creating anything: you are choosing which of your existing files
+the duress password will reveal. Something ordinary and slightly dull is ideal.
+
+You are then asked for two passwords: your real one, to open the vault, and the
+duress password you are setting.
+
+A progress bar appears while the decoy is prepared. Decoy files are ordinary
+files and can be large, so this takes as long as adding them normally would,
+and the window stays usable throughout.
+
+It can also be done from a terminal:
+
+    zt duress set yourvault.azv shopping-list.txt holiday-photo.jpg
+
+WHEN IT FIRES
+
+Everywhere. Unlocking, extracting, verifying, checking in: anywhere the program
+asks for a password, the duress password opens the decoy and destroys the real
+contents. Anything else would be a trap, because somebody reaching for Extract
+under pressure would get no protection at all.
+
+WHY THE PROGRAM WILL NOT TELL YOU WHETHER ONE IS SET
+
+After you set one, the panel confirms it until you close the window. After that
+it stops saying, and there is no way to ask.
+
+That is deliberate. Anybody who can open this program could otherwise read the
+answer off the screen, and a duress password known to exist protects nobody.
+The vault cannot be asked either: every vault carries the space for one, filled
+with random bytes when unused.
+
+Keep your own record of whether you set one, somewhere other than the vault.
+
+WHAT TO CHOOSE
+
+It must not resemble your real password. Two passwords a keystroke apart will
+be confused under pressure, and that is exactly when this gets used. Choose
+something from a completely different phrase.
+
+It must show something. A duress password that opens an empty vault invites the
+question of what else there is, so an empty one is refused.
+
+WHAT IT COSTS
+
+The real contents are gone the moment it is used. Not hidden, not archived, not
+recoverable by anyone including you. Typing it by accident is the same as
+destroying the vault.
+
+That is the feature working as designed. It is also why you should think hard
+before setting one.
+
+WHAT IT DOES NOT PROTECT AGAINST
+
+Somebody who takes the drive away and examines it properly. The container does
+not change size, and every vault carries the same duress block whether it is
+used or not, so neither of those gives you away. But the real encrypted data
+stays in the file as unreadable bytes, and a decoy holding two small files
+inside a large container invites an obvious question.
+
+Against that person this buys you the destruction, not the deception. Still
+worth having; just a different thing.
+
+--------------------------------------------------------------------------------
+16C. AUTO-LOCK
+--------------------------------------------------------------------------------
+
+After five minutes without activity, the window clears the contents list and
+forgets any tokens you attached. You unlock again to carry on.
+
+Password boxes are overwritten when they are finished with, rather than merely
+emptied. Better than nothing, and less than it sounds: the toolkit this window
+is built from may keep its own copies of what you typed, in places this program
+cannot reach.
+
+Being accurate about what this is: there is no session being locked. The
+program never holds your keys between actions, so there is nothing sitting in
+memory to expire. What this protects is the list of filenames on your screen
+and the tokens sitting ready to be used. Worth having, and less than the name
+suggests.
+
+--------------------------------------------------------------------------------
+17. DESTROYING A VAULT ON PURPOSE
+--------------------------------------------------------------------------------
+
+The Destruction section has three buttons. Two are safe and one is not.
+
+DRY RUN. Completely safe. Lists exactly what destruction would do and changes
+nothing at all. Read this before trusting the deadman switch.
+
+PANIC LOCK. Completely safe. Clears anything held in memory and leaves your
+files untouched. It never destroys anything.
+
+PANIC DESTROY. Permanent. It overwrites the key. Afterwards, no password, no
+token and no backup of the key will open that vault again.
+
+To use it you must supply:
+
+  your password,
+  a token, if the vault is protected,
+  and the word DESTROY typed exactly.
+
+The button stays grayed out until all of these are present. Destroying needs
+the same pieces as opening, deliberately: somebody who cannot read your vault
+should not be able to destroy it either.
+
+Afterwards you are shown a report saying what was and was not achieved. It does
+not overstate: things that could not be confirmed are marked as such.
+
+Remember that copies made earlier are unaffected and still open normally.
+
+
+--------------------------------------------------------------------------------
+18. THE RECORDS SECTION
+--------------------------------------------------------------------------------
+
+Records checks the program's own logs, not your files.
+
+  Audit chain     the history of what happened to this vault
+  State journal   the record of the deadman switch's states
+  Audit anchor    a cross-check between the two
+
+Each shows VERIFIED or FAILED.
+
+The chains are linked so that each entry seals the one before it. Editing,
+deleting or reordering any entry breaks every entry after it, so tampering
+cannot be hidden.
+
+The anchor exists because a chain cannot notice entries removed from its own
+end: a shortened chain still looks correct. The journal records how long the log
+should be, so removing entries from the end is caught.
+
+None of this stops somebody with full access to your computer from rewriting
+everything. It makes partial, quiet tampering detectable.
+
+
+--------------------------------------------------------------------------------
+19. A SUGGESTED FIRST HOUR
+--------------------------------------------------------------------------------
+
+Practice on something you do not care about before trusting anything real.
+
+  1.  Create a vault called practice.azv.
+  2.  Add a text file you do not need.
+  3.  Press Unlock, then Extract, and check the extracted copy opens normally.
+  4.  Press Verify and read the result.
+  5.  Set up key protection, saving both tokens somewhere you can find them.
+  6.  Close the program and start it again. Try to unlock with the password
+      alone and watch it refuse.
+  7.  Attach a token and unlock successfully.
+  8.  Try opening with both tokens and "Password lost" ticked.
+  9.  Set a deadman policy with a one hour timeout. Press "Start watching" and
+      watch the state change over time without anything being destroyed.
+  10. Run a dry run and read every line.
+  11. Use Panic destroy on the practice vault and read the report.
+  12. Confirm the practice vault no longer opens.
+
+When none of that surprises you, make the real one.
+
+
+--------------------------------------------------------------------------------
+20. IF SOMETHING GOES WRONG
+--------------------------------------------------------------------------------
+
+"authentication failed: wrong credentials, or the vault has been modified"
+    The password is wrong, a required token is missing, or the file has been
+    altered. The message is deliberately vague: telling you which would help
+    somebody guessing.
+
+"this vault is protected by split keys and cannot be opened with a password
+alone"
+    Attach a token in the Key protection section.
+
+The Contents list is empty after unlocking
+    If the vault genuinely has no files, that is correct. Otherwise check the
+    top bar is showing the vault you expected.
+
+The countdown says "off"
+    No deadman policy is enabled. See section 15.
+
+Nothing happened when the deadline passed
+    The service was not running, or was running without permission to destroy.
+    See section 16.
+
+The window says a previous service is no longer running
+    A service was stopped abruptly. The vault is not being watched. Press
+    "Clear stale record" and start it again.
+
+A vault will not open and you have lost a token
+    With three pieces you need any two. Password plus either token works.
+    Both tokens works. Only if you have lost two pieces is the vault
+    unrecoverable.
+
+
+--------------------------------------------------------------------------------
+21. GLOSSARY
+--------------------------------------------------------------------------------
+
+AEAD
+    Authenticated encryption. Scrambling that also detects alteration, so a
+    changed file is rejected rather than silently decrypted into nonsense.
+
+Argon2id
+    The method that turns your password into a key. Deliberately slow and
+    memory-hungry, so that trying millions of passwords is expensive.
+
+ARMED
+    The deadman state meaning the deadline has passed. Nothing has been
+    destroyed at this point.
+
+Audit log
+    A record of what happened to a vault: openings, failed attempts, files
+    added. Linked so that alterations are detectable.
+
+Check in
+    Telling the program you are present, by entering your password. Resets the
+    deadline.
+
+Chunk
+    A vault stores large files in pieces. Each is scrambled separately, so
+    damage to one does not spoil the rest.
+
+Component
+    One of the pieces needed to open a protected vault: your password, a
+    recovery token, or a custodian token.
+
+Cryptographic erasure
+    Destroying data by destroying its key rather than by overwriting it. More
+    reliable on modern drives, which move data around invisibly and may keep
+    old copies you cannot reach.
+
+Custodian token
+    The second token file. Meant to be held somewhere separate again, or by
+    somebody else.
+
+Deadman switch
+    A mechanism that acts if you stop responding. Here, it destroys the key to
+    a vault.
+
+Encryption
+    Scrambling information so it can only be read with the right key.
+
+Heartbeat
+    How often you intend to check in. Within it, a check-in counts fully.
+
+Journal
+    The record of the deadman switch's states over time.
+
+Key
+    The secret value that scrambles and unscrambles your files. Your password
+    is not the key; it protects the key.
+
+Manifest
+    The scrambled index of what a vault contains. The reason names and sizes
+    are hidden.
+
+Master key
+    The single key that everything inside a vault is scrambled with. Destroying
+    it is what makes a vault permanently unreadable.
+
+Presence score
+    A number from 0 to 100 estimating how confident the program is that you are
+    around. Checking in with your password sets it to 100. See "ambient
+    signals" for what does not.
+
+Ambient signals
+    Weak evidence that the computer is alive, as opposed to proof that you are:
+    the machine being switched on, reachable on the network, having its
+    keyboard or mouse used, or having a desktop session unlocked.
+
+    None of these say anything about you. A burglar sitting at your desk
+    produces every one of them, and so does a machine left running in an empty
+    house. They are therefore capped at 60 points in total, however many of
+    them are present, which is why required confidence cannot be set at or
+    below 60. Above that threshold, only a real check-in can hold a deadline
+    open.
+
+Recovery token
+    The first token file. A small file that acts as one of the pieces needed to
+    open a protected vault.
+
+Split key
+    Dividing the key into pieces so that no single one is enough.
+
+Threshold
+    How many pieces are needed. Here, two out of three.
+
+Timeout
+    How long you can go without checking in before the vault is considered
+    abandoned.
+
+Token
+    A small file holding one piece of the key. Keep it somewhere the vault is
+    not.
+
+Vault
+    A single file holding your files in scrambled form.
+
+ztd
+    The background program that watches the deadline. The window shows the
+    countdown; ztd is what acts on it.
+
+
+================================================================================
+End of manual. Version 0.21.0.
+================================================================================

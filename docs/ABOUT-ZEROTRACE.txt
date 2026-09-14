@@ -1,0 +1,369 @@
+================================================================================
+APEX ZEROTRACE
+An encrypted vault that can destroy its own key
+Version 0.21.0
+================================================================================
+
+WHAT IT IS
+
+ZeroTrace stores your files inside a single encrypted container. Nobody can
+read what is inside without your password, and the container does not reveal
+what sort of thing it holds: names, sizes and dates are encrypted alongside the
+contents.
+
+Two things make it unusual.
+
+It can be told to destroy itself. Set a deadline, and if you stop checking in
+before it passes, the key is overwritten and everything inside becomes
+permanently unreadable.
+
+And its key can be split. Instead of one password standing between an attacker
+and your files, the key is divided into three pieces of which any two are
+needed. Somebody who steals your drive and guesses your password has one piece.
+
+It is written in Rust, runs on Windows, macOS and Linux, and is free software
+under the Apache 2.0 license.
+
+
+================================================================================
+FEATURES
+================================================================================
+
+--- ENCRYPTION AND STORAGE -----------------------------------------------------
+
+Authenticated encryption
+    XChaCha20-Poly1305 by default; AES-256-GCM where a compliance rule requires
+    it. Every piece of stored data carries a tag proving it has not been
+    altered, so a modified file is refused rather than quietly decrypted into
+    nonsense.
+
+Encrypted metadata
+    Filenames, folder paths, sizes and timestamps are encrypted with the
+    contents. The container shows its total size and nothing else about what is
+    in it.
+
+Slow key derivation
+    Argon2id turns your password into a key, deliberately using time and memory
+    so that testing millions of guesses is expensive rather than instant. The
+    settings are stored inside the authenticated part of the container, so an
+    attacker cannot hand you back a weakened copy.
+
+Chunked storage with integrity checking
+    Large files are stored in one-megabyte pieces, each encrypted separately,
+    with a fingerprint over all of them. Damage is localised and detectable
+    rather than silently corrupting.
+
+Compression
+    Files are compressed before encryption where that helps, and stored as-is
+    where it does not. Already-compressed formats are recognized and skipped.
+
+Constant memory use
+    A five gigabyte file is read, encrypted and written a piece at a time.
+    Memory use does not grow with file size, so a file larger than your RAM is
+    not a problem.
+
+Progress reporting
+    Adding files, extracting them and preparing duress contents all show a
+    progress bar and keep the window responsive.
+
+Atomic extraction
+    A file arrives complete and checked or not at all. A damaged file leaves
+    nothing partly decrypted behind, and a destination that is a symbolic link
+    is refused rather than followed.
+
+Owner-only file permissions
+    Anything holding key material or describing a vault is restricted to its
+    owner on Unix, rather than inheriting whatever the system default happens
+    to be.
+
+
+--- SPLIT-KEY PROTECTION -------------------------------------------------------
+
+Two of three components
+    The key that opens a vault is divided into three pieces: your password, and
+    two small token files you keep elsewhere. Any two open the vault.
+
+    Two of three rather than three of three, deliberately. Requiring all three
+    would mean any single loss is permanent: a dead computer, a lost USB stick,
+    a forgotten password. Two of three still defeats a stolen drive and
+    survives losing any one piece.
+
+Protection against a stolen drive
+    An attacker who removes your drive, copies the vault, and correctly guesses
+    your password still holds only one piece and needs two. Guessing for a
+    thousand years does not change that arithmetic.
+
+Recovery without the password
+    Lost your password? The two tokens open the vault between them.
+
+Instant to set up
+    Enrolling rewrites 48 bytes. A vault of any size converts in the time it
+    takes to derive one key; nothing stored is re-encrypted.
+
+
+--- THE DEADMAN SWITCH ---------------------------------------------------------
+
+Cryptographic erasure
+    When the deadline passes, the key is overwritten and confirmed gone by
+    reading the bytes back. This is more reliable than deleting or overwriting
+    the files themselves, because modern storage relocates data invisibly and
+    may keep copies you cannot address. A key that no longer exists cannot be
+    recovered from any of them.
+
+Presence scoring, not a simple timer
+    Evidence that you are around is weighted. Entering your password scores
+    full marks. Signs that the computer is merely switched on, connected, or
+    being typed at are capped well below the threshold, because a burglar at
+    your desk produces all of them.
+
+Deadlines that resist manipulation
+    Time asleep still counts, so closing a laptop does not postpone anything.
+    Winding the clock back does not either: elapsed time is taken as the larger
+    of two independent measures.
+
+Warning states
+    A vault moves through NORMAL, WARNING, CRITICAL and ARMED rather than
+    jumping from fine to gone, and checking in at any point before destruction
+    is authorized returns it to normal.
+
+Two-phase authorization
+    Reaching the deadline commits a decision; destruction then proceeds as a
+    separate step. An interrupted destruction resumes rather than reverting.
+
+Mandatory dry run
+    Arming is locked until you have seen a dry run listing exactly what would
+    happen. It changes nothing.
+
+Honest destruction reports
+    Afterwards you are told what was verified, what was best effort, and what
+    was not attempted. Nothing is claimed that was not observed.
+
+
+--- REMOTE CUSTODY -------------------------------------------------------------
+
+A component held off the machine
+    A custodian, kept on another computer or a network share, holds one of the
+    three key pieces. It returns that piece only while you keep checking in,
+    and destroys it when you stop.
+
+Survives losing control of the computer
+    This is the only part of ZeroTrace that somebody sitting at your machine
+    cannot switch off. Everything else runs there, and whoever controls the
+    machine can close it. The custodian does not.
+
+Check-ins that an attacker cannot forge
+    Requests are signed with a key derived from your password, existing only
+    long enough to sign one. Somebody holding your computer but not your
+    password cannot keep the deadline open. Somebody who cracks the password
+    after the deadline finds the piece already destroyed.
+
+Graceful when unreachable
+    A custodian that is not mounted today does not stop you opening a vault
+    whose remaining pieces still add up.
+
+
+--- TAMPER EVIDENCE ------------------------------------------------------------
+
+Hash-chained audit log
+    Every event is sealed to the one before it. Editing, deleting or reordering
+    any entry breaks every entry after it.
+
+Detection of removed entries
+    A chain cannot notice records removed from its own end, because a shortened
+    chain is still valid. A separate state journal records how long the log
+    should be, which catches exactly that.
+
+Recorded interruptions
+    A watcher that was killed, crashed, or had its window closed is recorded on
+    the next start, along with how long the vault went unwatched. This cannot
+    be prevented on a machine somebody else controls, but it cannot be done
+    quietly either.
+
+Integrity verification
+    One command decrypts every stored piece and checks it against its
+    fingerprint, finding disk damage as well as deliberate tampering.
+
+
+--- OPERATION ------------------------------------------------------------------
+
+Three programs
+    A desktop window, a command-line tool, and a background service that
+    watches deadlines. All three work on the same vaults.
+
+Background service
+    Runs independently of the window. Start it, arm it, and stop it from the
+    desktop, or install it to restart when you log in without needing
+    administrator rights.
+
+Multiple vaults
+    Each vault is tracked separately, with its own policy, deadline and
+    watcher. The window lists your other vaults and flags any that are not
+    being watched or whose watcher stopped unexpectedly.
+
+A duress password
+    A second password that opens the vault into files you chose and destroys
+    the real contents as it does, quietly. Both sets live in one container, and
+    every vault carries the space for a duress wrapping whether one is set or
+    not, so the file cannot be asked whether it has one.
+
+Password strength enforcement
+    New passwords must be at least fifteen characters, built from at least six
+    different ones, with no long run of a single character and no short piece
+    simply repeated. A phrase of unrelated words joined by dashes is encouraged
+    rather than symbols and digits demanded, because complexity rules produce
+    passwords that are worse and harder to remember.
+
+Failed attempt handling
+    Repeated wrong passwords are met with escalating delays. Optional
+    destruction after a set number of failures exists but is off by default,
+    and refuses to be set below three.
+
+Panic controls
+    Panic lock clears anything held in memory and leaves your data untouched.
+    Panic destroy is permanent, and requires the same key pieces as opening the
+    vault, so somebody who cannot read it cannot destroy it either.
+
+Threshold recovery for organizations
+    A master key can be split among several custodians so that a quorum can
+    recover it. It deliberately does not survive a committed destruction.
+
+Signed remote commands
+    An organization can lock, require a check-in, shorten a deadline or destroy
+    a vault, using signed and replay-resistant commands. No command can weaken
+    a vault, and none can read its contents.
+
+Documentation
+    Full manuals for both the window and the command line, written for somebody
+    with no background in encryption, each with a glossary.
+
+
+================================================================================
+HOW IT COMPARES
+================================================================================
+
+ZeroTrace does not use better cryptography than the established tools. It uses
+the same well-reviewed building blocks. What differs is what sits on top.
+
+VeraCrypt
+    Mature, widely used, independently audited, and offers hidden volumes for
+    plausible deniability, which ZeroTrace does not. It is a container you
+    mount as a drive. It has no deadline, no split key and no self-destruction.
+    If your requirement is a strong encrypted volume from a proven tool,
+    VeraCrypt is the more conservative choice.
+
+BitLocker and FileVault
+    Full-disk encryption built into the operating system, transparent in daily
+    use, and protecting a powered-off machine well. They protect the disk, not
+    individual vaults, and offer no deadline, no split key and no destruction.
+    They also depend on the vendor's key escrow arrangements.
+
+Cryptomator
+    File-level encryption aimed at cloud storage, encrypting filenames as
+    ZeroTrace does, open source and audited. It is designed for syncing rather
+    than for deadlines or key splitting.
+
+7-Zip and similar archivers
+    Strong AES encryption and good compression. Filenames are only hidden if
+    you remember a specific option. No key management, no deadline, no
+    integrity model beyond the archive itself.
+
+Shamir tools such as ssss
+    Split a secret among several holders, which ZeroTrace also does. They are
+    building blocks rather than vaults: no storage, no deadline, no interface.
+
+Dead man's switch services
+    Web services that notify contacts or release messages if you stop
+    responding. They deliver information; they do not destroy data, and they
+    require trusting a third party with whatever they hold.
+
+Secure deletion tools
+    Overwrite files in place. On modern storage this is unreliable, because
+    filesystems and drives relocate data invisibly. ZeroTrace destroys the key
+    instead, which is why it can make a claim about copies it cannot reach.
+
+WHERE ZEROTRACE IS DIFFERENT
+
+The combination, not any single part. A vault whose deadline destroys the key
+rather than the file; whose key is split so that a stolen drive plus a guessed
+password is not enough; and where one piece can live somewhere the attacker
+does not control.
+
+WHERE IT IS BEHIND
+
+It has not been independently audited. VeraCrypt and Cryptomator have. For a
+security tool this is the single most important difference, and it counts
+against ZeroTrace.
+
+It is pre-1.0 and written by one author. Forensic testing has been started, not
+finished: destruction has been checked once on a USB stick, where the key could
+not be recovered from the raw disk afterwards. That is one run on one kind of
+storage, and no attempt has been made at physical media recovery.
+
+Hardware key binding, using a TPM or a FIDO2 key, is designed but not built.
+Without it, nothing binds a vault to one physical computer, and an attacker who
+holds your drive can restore an older copy of its files without that being
+detected.
+
+
+================================================================================
+WHAT IT CANNOT DO
+================================================================================
+
+Protect a file's past
+    A vault protects what is inside it and says nothing about where the file
+    has been. Every file existed somewhere first, unencrypted. Deleting the
+    original leaves the contents on the disk for free recovery software to
+    find, and the original is the least of it: editors leave backup copies,
+    your computer keeps thumbnails and search indexes, the operating system
+    takes snapshots, and solid state drives keep spare space no program can
+    reach.
+
+    Full-disk encryption underneath, with a real passphrase and the machine
+    shut down rather than asleep, is what closes this. See
+    docs/BEFORE-THE-VAULT.txt.
+
+
+Recover a lost password
+    If a vault is not split-key protected and the password is gone, it is
+    unreadable for ever. Nobody can help.
+
+Protect copies made earlier
+    The key lives inside the container, so a backup taken before destruction
+    carries its own key and still opens. Destroying a vault protects that file,
+    not copies of it.
+
+Defend a computer that is already compromised while a vault is open
+    At that moment the files are readable by you, and therefore by anything
+    running as you.
+
+Stop somebody closing the watcher
+    Nothing can, on a machine they control. What defends a vault against that
+    person is key protection, not the deadline: stopping the watcher gives them
+    unlimited time, and against a split key unlimited time is worth nothing.
+
+Detect a rolled-back drive
+    Somebody holding your disk can restore an older copy of any file on it.
+    Detecting that needs hardware support this version does not have.
+
+Hide how compressible your files are
+    Compression happens before encryption, so the container's size reveals
+    something about the nature of its contents.
+
+
+================================================================================
+STATUS
+================================================================================
+
+Version 0.21.0. Free software under the Apache 2.0 license.
+
+251 automated tests. Every capability is reported by the program itself as
+verified, best effort, not supported, or not implemented, and that report is
+generated from the code so it cannot drift from what the software actually
+does. Run `zt security audit` to see it.
+
+Three things stand between this and a 1.0 security claim: hardware key binding,
+forensic validation that a destroyed vault genuinely cannot be recovered, and
+an independent cryptographic review. None has been done.
+
+Treat it accordingly: promising, honest about its limits, and not yet something
+to stake irreplaceable data on without keeping a backup you control.

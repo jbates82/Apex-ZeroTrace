@@ -1,0 +1,24 @@
+[package]
+name = "zerotrace-vault"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+uuid.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }
+zerotrace-compress = { path = "../zerotrace-compress" }
+zerotrace-format = { path = "../zerotrace-format" }
+zerotrace-kdf = { path = "../zerotrace-kdf" }
+zerotrace-auth = { path = "../zerotrace-auth" }
+zerotrace-split = { path = "../zerotrace-split" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }
+
+[dev-dependencies]
+tempfile = "3"
+zerotrace-format = { path = "../zerotrace-format" }
+zerotrace-auth = { path = "../zerotrace-auth", features = ["test-authenticator"] }
+zerotrace-split = { path = "../zerotrace-split" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }
+zerotrace-kdf = { path = "../zerotrace-kdf" }

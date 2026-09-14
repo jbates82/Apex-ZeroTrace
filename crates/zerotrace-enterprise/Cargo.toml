@@ -1,0 +1,16 @@
+[package]
+name = "zerotrace-enterprise"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+sharks = "0.5"
+rand.workspace = true
+serde.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }

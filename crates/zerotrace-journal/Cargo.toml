@@ -1,0 +1,15 @@
+[package]
+name = "zerotrace-journal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+uuid.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }
+zerotrace-policy = { path = "../zerotrace-policy" }
+
+[dev-dependencies]
+zerotrace-presence = { path = "../zerotrace-presence" }

@@ -1,0 +1,9 @@
+[package]
+name = "zerotrace-sanitize"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rand.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }

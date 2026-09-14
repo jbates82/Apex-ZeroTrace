@@ -1,0 +1,214 @@
+================================================================================
+WHAT HAPPENED BEFORE THE FILE WENT IN THE VAULT
+The most important thing in this documentation
+================================================================================
+
+READ THIS BEFORE YOU TRUST A VAULT WITH ANYTHING THAT MATTERS.
+
+A vault protects what is inside it. It says nothing at all about where that
+file has been.
+
+Every file you put in a vault existed somewhere first. You wrote it, or
+downloaded it, or a camera made it. During that time it sat on an ordinary
+disk, unencrypted, doing all the ordinary things files do. Putting a copy in a
+vault does not reach back in time and undo any of that.
+
+Delete the original afterwards and the problem does not go away. Deleting a
+file removes its name from a list. The contents stay on the disk until
+something else happens to need that exact space, which might be next week or
+might be never. Free recovery programs will find it. Some of them are one
+download and two clicks.
+
+This is not a flaw in ZeroTrace and it is not something ZeroTrace can fix. The
+file was there before this program ever saw it. But it is the difference
+between a vault that protects you and a vault that gives you a comforting
+feeling while a copy of everything sits three inches away.
+
+
+--------------------------------------------------------------------------------
+IT IS WORSE THAN JUST THE FILE YOU DELETED
+--------------------------------------------------------------------------------
+
+The original is usually the smallest part of it. A document that lived on your
+computer has probably also left behind:
+
+  Automatic backup copies
+      Word, Excel and most editors save spare copies while you work, in case
+      the program crashes. You never see them and you almost never delete them.
+
+  Thumbnails and previews
+      Your computer makes little pictures of your files so folders look nice.
+      Those pictures survive the file being deleted, sometimes for years.
+
+  Search index entries
+      Windows Search and Spotlight read the inside of your documents so you can
+      search for a phrase later. That means the phrase is stored somewhere else
+      too.
+
+  Restore points and snapshots
+      Windows and Mac both take automatic copies of your whole system, without
+      asking. One taken yesterday holds yesterday's version of everything.
+
+  Backups and cloud folders
+      File History, Time Machine, OneDrive, Dropbox, iCloud. If the file was
+      ever in a synced folder, there is a copy somewhere you do not control.
+
+  Spare space inside the drive itself
+      Solid state drives quietly move data around and keep spare room you
+      cannot see or address. No program can reliably reach it. Not this one,
+      not any other.
+
+So even if you perfectly erased the original, several copies you never made
+would still exist.
+
+
+--------------------------------------------------------------------------------
+WHAT ACTUALLY WORKS
+--------------------------------------------------------------------------------
+
+In order, best first.
+
+1. NEVER LET THE FILE TOUCH A NORMAL DISK AT ALL
+
+   The only approach that genuinely solves this rather than cleaning up
+   afterwards.
+
+   Create the file on an encrypted drive from the very beginning. Write it,
+   edit it, and add it to the vault without it ever existing on an ordinary
+   unencrypted disk.
+
+   If you can, use a RAM disk: a fake drive that lives in your computer's
+   memory and vanishes completely when you shut down. Nothing written there
+   ever reaches a physical disk. Free tools exist for this on Windows, Mac and
+   Linux.
+
+   This takes planning and only works for files you create yourself. It does
+   nothing for a file that already exists.
+
+2. TURN ON FULL-DISK ENCRYPTION AND LEAVE IT ON
+
+   The practical answer for almost everybody, and the one we would recommend
+   first.
+
+   BitLocker on Windows, FileVault on a Mac, LUKS on Linux. Your whole drive
+   is encrypted, so all the leftovers described above are encrypted too.
+
+   A forensics team with your powered-off laptop then has a completely
+   different problem: not "recover the deleted file" but "break the disk
+   encryption", which is the same class of problem as breaking the vault.
+
+   Two conditions matter. Use a real passphrase, not a four-digit PIN. And the
+   computer must be OFF, not asleep, because a sleeping computer is holding the
+   key in memory.
+
+   This works alongside ZeroTrace rather than replacing it. Disk encryption
+   handles the leftovers; the vault handles the deadline, the split key and the
+   destruction.
+
+3. KEEP SENSITIVE WORK ON A REMOVABLE DRIVE
+
+   Do the whole job on a USB drive or external disk: create the file there,
+   make the vault there, keep it there.
+
+   Your computer's main disk never sees any of it. And if it ever truly
+   matters, a USB stick can be destroyed with a hammer in a way a laptop
+   cannot.
+
+4. WIPE THE WHOLE DRIVE AFTERWARDS
+
+   Drastic, and it does work, but it wipes everything and not just the file
+   you were worried about. Realistic when you are retiring a computer, not as
+   routine practice.
+
+   If you do this, do it properly:
+
+     On a solid state drive, use the drive maker's own "secure erase". Samsung,
+     Crucial, WD and the others all provide a free tool. It tells the drive to
+     throw away its own encryption key, which reaches the spare space nothing
+     else can.
+
+     On an old spinning hard drive, a full overwrite works, and free tools like
+     DBAN do it.
+
+   Do not bother with programs that claim to "shred" individual files on a
+   solid state drive. They cannot reach the copies the drive keeps internally,
+   and they will tell you they succeeded.
+
+5. A VIRTUAL MACHINE, BUT ONLY IF YOU DO IT PROPERLY
+
+   A virtual machine is a pretend computer running inside a window on your real
+   one. Done right this helps a great deal. Done casually it helps not at all,
+   and it is easy to do casually.
+
+   The catch is that the pretend computer's disk is just a big file on your
+   real computer's disk. Everything the pretend computer writes ends up inside
+   that file, which sits on your real drive with all the same problems. You
+   have moved the mess, not removed it.
+
+   It genuinely helps when BOTH of these are true:
+
+     The virtual machine's disk is encrypted, with the passphrase kept outside
+     it, so its contents are not readable from the host.
+
+     Your real computer's disk is encrypted too, so the big file itself is
+     protected wherever it sits.
+
+   If you are going to do both of those, you have already done step 2, and the
+   virtual machine adds tidiness rather than protection. It is worth it if you
+   want a clean separated workspace. It is not a substitute for encrypting your
+   actual disk.
+
+
+--------------------------------------------------------------------------------
+WHAT DOES NOT WORK
+--------------------------------------------------------------------------------
+
+Say these plainly, because all of them feel like they should work.
+
+  Deleting the file. Removes the name, leaves the contents.
+
+  Emptying the recycle bin. Same, and people believe otherwise.
+
+  "Secure delete" or "file shredder" programs on a solid state drive. They
+  overwrite where the file used to appear to be. The drive has already moved
+  the real data somewhere they cannot reach.
+
+  Formatting a drive quickly. Rewrites the index, leaves everything else.
+
+  Trusting that nobody would bother. Recovery software is free and easy. This
+  is not an expert-only capability any more.
+
+
+--------------------------------------------------------------------------------
+A SENSIBLE ROUTINE FOR AN ORDINARY PERSON
+--------------------------------------------------------------------------------
+
+You do not have to do everything above. For most people:
+
+  Turn on BitLocker or FileVault today, with a real passphrase. That single
+  step does more than everything else on this page combined.
+
+  Keep your computer shut down rather than asleep when you are not using it.
+
+  Put vaults on a USB drive rather than your main disk where you can.
+
+  When a file is genuinely sensitive, create it on that USB drive from the
+  start rather than making it on your desktop and moving it.
+
+  Accept that anything already on your computer has a history you cannot
+  rewrite. Going forward is the part you control.
+
+
+--------------------------------------------------------------------------------
+THE HONEST SUMMARY
+--------------------------------------------------------------------------------
+
+ZeroTrace protects a container. It cannot protect a file's past.
+
+If your worry is somebody stealing your laptop, or you not coming back,
+ZeroTrace addresses that and full-disk encryption underneath it closes the gap
+described here.
+
+If your worry is a professional examination of a machine that has held
+sensitive material unencrypted for years, no vault fixes that, and anybody
+telling you otherwise is selling something.

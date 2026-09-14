@@ -1,0 +1,34 @@
+[package]
+name = "zerotrace-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "zerotrace"
+path = "src/main.rs"
+
+[dependencies]
+zeroize.workspace = true
+eframe = { version = "0.27", default-features = false, features = ["glow", "default_fonts"] }
+egui = "0.27"
+zerotrace-core = { path = "../../crates/zerotrace-core" }
+zerotrace-ipc = { path = "../../crates/zerotrace-ipc" }
+zerotrace-policy = { path = "../../crates/zerotrace-policy" }
+zerotrace-vault = { path = "../../crates/zerotrace-vault" }
+
+# Windows and macOS use the platform's own file dialog and windowing.
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+rfd = "0.14"
+
+# Linux needs an explicit display backend, and the pins below hold the Wayland
+# stack at versions the older toolchain can build. None of this exists on
+# other platforms, so it must not be declared unconditionally: doing so makes
+# Windows try to compile wayland-sys, which uses std::os::unix.
+[target.'cfg(target_os = "linux")'.dependencies]
+eframe = { version = "0.27", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"] }
+rfd = { version = "0.14", default-features = false, features = ["gtk3"] }
+wayland-client = "=0.31.2"
+wayland-backend = "=0.3.3"
+wayland-scanner = "=0.31.1"
+quick-xml = "=0.31.0"

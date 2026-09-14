@@ -1,0 +1,10 @@
+[package]
+name = "zerotrace-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-sanitize = { path = "../zerotrace-sanitize" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }

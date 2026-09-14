@@ -1,0 +1,322 @@
+================================================================================
+TESTING WHETHER DESTRUCTION REALLY WORKS
+A step-by-step guide for Windows. No experience needed.
+================================================================================
+
+WHAT YOU ARE TESTING AND WHY
+
+When ZeroTrace destroys a vault, it does not scrub the whole file. It
+overwrites 48 particular bytes: the key. The idea is that without those bytes
+the rest is meaningless forever, even to somebody who recovers every scrap of
+it from the disk.
+
+This guide checks that. You write down those 48 bytes before destroying a
+vault, then read the raw disk afterwards and go looking for them. If they are
+gone, the claim holds.
+
+Two words used throughout:
+
+  THE PHRASE
+      A memorable line of text you put inside your test file, such as
+      PINEAPPLE-SUBMARINE-1234. Nothing technical. It exists so you can search
+      the disk for it afterwards.
+
+  THE KEY BYTES
+      48 bytes near the start of every vault file. This is what destruction
+      overwrites. Finding them afterwards would mean destruction failed.
+
+Set aside about an hour.
+
+
+================================================================================
+THE MISTAKE THAT RUINS THIS TEST
+================================================================================
+
+READ THIS BEFORE YOU START. It is the one thing that will waste your afternoon.
+
+Your test file must never be saved onto the USB stick.
+
+Make it on your Desktop. Add it to the vault from there. The stick should only
+ever hold the vault itself.
+
+WHY
+
+Adding a file to a vault copies it in. Your original stays exactly where it
+was, untouched and unencrypted. That is by design, and it is stated in the
+manual: deleting the original is your job, not the program's.
+
+So if you save your test file onto the stick first, the stick now holds two
+things: an encrypted copy inside the vault, and your plain readable original
+sitting beside it.
+
+You might think deleting the original solves that. It does not, and here is
+the part that catches people out.
+
+Windows uses a filing system called NTFS, which keeps an index of every file
+on the drive. For small files, a few hundred bytes or less, NTFS does not
+bother giving the file its own space on the disk. It writes the entire contents
+into the index entry itself, right next to the filename.
+
+Deleting the file marks that index entry as reusable. It does not wipe it.
+Emptying the recycle bin does not either. The text sits there until something
+else happens to need that exact slot, which may be weeks away or never.
+
+So you search the disk, you find your phrase, and it looks as though the vault
+leaked. It did not. You found the plain original you made yourself.
+
+HOW TO TELL, IF IT HAPPENS ANYWAY
+
+Look at the bytes just above and below your match in the hex editor. If you see
+the filename nearby, often with a full stop between every letter like
+
+    .s.e.c.r.e.t...t.x.t
+
+then you are looking at that index entry, not at anything the vault produced.
+A vault could never store a readable filename: encrypting filenames is one of
+the things it does.
+
+Format the stick, start again, and keep the test file on your Desktop.
+
+
+================================================================================
+WHAT YOU NEED
+================================================================================
+
+  1. A USB stick you do not care about. Any size. It will be erased.
+
+     Use a USB stick, not your computer's main drive. A modern internal SSD
+     shuffles data around behind the operating system's back, which muddies the
+     result in both directions. A cheap stick is more honest.
+
+  2. HxD, a free hex editor.
+     Download from https://mh-nexus.de/en/hxd/
+     Install it normally.
+
+     A hex editor shows the raw contents of a file or a disk as numbers,
+     instead of trying to interpret them. That is how you see bytes no program
+     is choosing to display.
+
+  3. ZeroTrace, built and working.
+
+
+================================================================================
+PART 1: SET UP CLEANLY
+================================================================================
+
+STEP 1  Plug in the USB stick and format it.
+
+        Right-click it in File Explorer, choose Format, leave the settings
+        alone, click Start.
+
+        A freshly formatted stick means anything you find later came from this
+        test and nothing else.
+
+        Note its drive letter. This guide assumes E:. Use yours.
+
+STEP 2  Make your test file ON YOUR DESKTOP.
+
+        Not on the stick. See the warning above.
+
+        Open Notepad, type exactly this on one line:
+
+            PINEAPPLE-SUBMARINE-1234
+
+        Save it to your Desktop as  secret.txt
+
+STEP 3  Create a vault on the USB stick.
+
+        Open ZeroTrace, press Create, and save the vault to the stick as:
+
+            E:\test.azv
+
+        Choose a password of at least 15 characters that you will remember for
+        the next hour, such as:
+
+            testing-testing-one-two-three
+
+STEP 4  Add the file from your Desktop.
+
+        Press Add file, browse to your Desktop, choose secret.txt, enter the
+        password.
+
+        It should appear under Stored files.
+
+        At this point the stick holds the vault and nothing else. Your plain
+        file is still on your Desktop, which is where it belongs.
+
+STEP 5  Close ZeroTrace completely.
+
+        The next step reads the vault file directly, and you do not want the
+        program writing to it at the same time.
+
+
+================================================================================
+PART 2: WRITE DOWN THE KEY BYTES
+================================================================================
+
+STEP 6  Open HxD, then File, Open, and choose E:\test.azv
+
+        Three columns appear:
+          left    numbers going down, called offsets: how far into the file
+          middle  pairs like 41 5A 56: the actual bytes
+          right   the same bytes shown as text, mostly nonsense
+
+STEP 7  Jump to the key bytes.
+
+        Press Ctrl+G. Type  68  and choose hex. Click OK.
+
+        (68 in hex is 104 in ordinary numbers. The key begins there.)
+
+STEP 8  Select 48 bytes.
+
+        Edit menu, then Select block:
+            Start-offset:  68     (hex)
+            Length:        30     (hex)
+
+        (30 in hex is 48 in ordinary numbers.)
+
+STEP 9  Copy them somewhere safe.
+
+        Edit, then Copy as, then Hex values.
+
+        Paste into Notepad and save as KEYBYTES.txt ON YOUR DESKTOP.
+
+        Not on the stick. Saving it there would put the very bytes you are
+        hunting for onto the drive you are about to search, and you would find
+        them and think destruction failed.
+
+STEP 10 Close HxD.
+
+
+================================================================================
+PART 3: DESTROY THE VAULT
+================================================================================
+
+STEP 11 Open ZeroTrace and open E:\test.azv
+
+STEP 12 Go to Destruction and press Dry run.
+
+        It changes nothing. Read it. This also unlocks arming, and it is worth
+        seeing once.
+
+STEP 13 Press Panic destroy.
+
+        Enter the password, type DESTROY in the second box, confirm.
+
+        You should get a report saying Cryptographic Erasure VERIFIED.
+
+STEP 14 Close ZeroTrace, and now leave the stick alone.
+
+        Do not format it. Do not copy anything onto it. Do not empty a recycle
+        bin onto it. Anything written now could overwrite the evidence you are
+        about to look for.
+
+
+================================================================================
+PART 4: GO LOOKING
+================================================================================
+
+STEP 15 Open HxD as an administrator.
+
+        Find it in the Start menu, right-click, Run as administrator. Windows
+        will ask permission; say yes.
+
+        Reading a whole disk rather than a single file is a privileged
+        operation, which is why this is needed.
+
+STEP 16 Open the disk itself, not a file.
+
+        Extras menu, then Open disk.
+
+        Under Physical disks, choose your USB stick. Check the size matches so
+        you do not open the wrong drive.
+
+        Tick "Open as Readonly" if offered. You are looking, not editing. A
+        stray keystroke in disk mode can damage a drive.
+
+STEP 17 Search for the key bytes.
+
+        Search menu, then Find, then the Hex-values tab.
+
+        Paste in the first 16 bytes from your KEYBYTES.txt, for example:
+            8F 2A 41 9C 3D ...
+
+        Sixteen is plenty. Sixteen bytes in a row in the right order is not a
+        coincidence.
+
+        Click Search all.
+
+STEP 18 Read the result. This is the test.
+
+        NO MATCHES FOUND
+            The key is gone from the disk. Destruction did what it claims.
+            This is a pass.
+
+        MATCHES FOUND
+            The key survived somewhere on the drive. Note where, and report it.
+            This would mean the central claim of the program does not hold on
+            this kind of storage, which is exactly what this test exists to
+            find out.
+
+STEP 19 Search for the phrase as a second check.
+
+        Search, Find, Text-string tab. Type:
+
+            PINEAPPLE-SUBMARINE-1234
+
+        Click Search all.
+
+        Because you kept the plain file on your Desktop, the stick never held
+        it. So here, no matches is the expected and correct result.
+
+        If you do find it, look at the surrounding bytes for a readable
+        filename as described in the warning at the top. That tells you whether
+        you are looking at a leak or at a leftover you created yourself.
+
+
+================================================================================
+PART 5: THE MORE INTERESTING TEST
+================================================================================
+
+The test above uses a filesystem where ZeroTrace claims overwriting works.
+
+There are filesystems where it says the opposite. On Btrfs and ZFS, writing
+over a file does not touch the original blocks at all, and ZeroTrace reports
+overwriting as NOT SUPPORTED rather than pretending otherwise.
+
+If you have a Linux machine or a virtual one, repeat this on a Btrfs volume.
+The interesting outcome there is that you DO find old data, because that
+confirms the program is telling the truth about its own limits. A program that
+correctly reports what it cannot do is worth more than one that claims
+everything worked.
+
+
+================================================================================
+WHAT THIS TEST DOES AND DOES NOT PROVE
+================================================================================
+
+IT PROVES
+    That on this kind of storage the key really is gone after destruction, and
+    cannot be recovered by reading the raw disk with ordinary tools.
+
+IT DOES NOT PROVE
+    That the encryption itself is strong. That is a separate question, and no
+    free tool can test it: no password-cracking program understands this vault
+    format, and the encryption used is the same as that relied on by banks and
+    governments.
+
+    That a professional laboratory could not recover something. They have
+    equipment that reads the physical medium below the level any software can
+    reach. This is the reasonable test, not the definitive one.
+
+    Anything about internal SSDs, which relocate data invisibly. A clean result
+    from a USB stick says less about an SSD than you might hope.
+
+RESULT SO FAR
+
+This test has been run once, on a Windows machine with a USB stick, in
+February 2026. The key bytes were not found. Destruction behaved as described.
+
+That is one run, by one person, on one kind of storage. It is a great deal
+better than nothing, which is what came before it, and a great deal short of an
+audit.

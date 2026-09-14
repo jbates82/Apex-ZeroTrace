@@ -1,0 +1,30 @@
+[package]
+name = "zerotrace-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "zt"
+path = "src/main.rs"
+
+[dependencies]
+zerotrace-core = { path = "../../crates/zerotrace-core" }
+zerotrace-crypto = { path = "../../crates/zerotrace-crypto" }
+zerotrace-compress = { path = "../../crates/zerotrace-compress" }
+zerotrace-kdf = { path = "../../crates/zerotrace-kdf" }
+zerotrace-vault = { path = "../../crates/zerotrace-vault" }
+zerotrace-secure-memory = { path = "../../crates/zerotrace-secure-memory" }
+rpassword = "7"
+zerotrace-audit = { path = "../../crates/zerotrace-audit" }
+zerotrace-auth = { path = "../../crates/zerotrace-auth" }
+zerotrace-presence = { path = "../../crates/zerotrace-presence" }
+zerotrace-policy = { path = "../../crates/zerotrace-policy" }
+zerotrace-journal = { path = "../../crates/zerotrace-journal" }
+zerotrace-destroy = { path = "../../crates/zerotrace-destroy" }
+zerotrace-sanitize = { path = "../../crates/zerotrace-sanitize" }
+zerotrace-platform = { path = "../../crates/zerotrace-platform" }
+zerotrace-enterprise = { path = "../../crates/zerotrace-enterprise" }
+zerotrace-split = { path = "../../crates/zerotrace-split" }
+zerotrace-format = { path = "../../crates/zerotrace-format" }
+zerotrace-remote = { path = "../../crates/zerotrace-remote" }

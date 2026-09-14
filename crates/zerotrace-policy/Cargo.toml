@@ -1,0 +1,10 @@
+[package]
+name = "zerotrace-policy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-presence = { path = "../zerotrace-presence" }

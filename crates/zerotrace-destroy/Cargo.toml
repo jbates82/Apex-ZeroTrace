@@ -1,0 +1,20 @@
+[package]
+name = "zerotrace-destroy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rand.workspace = true
+uuid.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }
+zerotrace-format = { path = "../zerotrace-format" }
+zerotrace-journal = { path = "../zerotrace-journal" }
+zerotrace-policy = { path = "../zerotrace-policy" }
+zerotrace-sanitize = { path = "../zerotrace-sanitize" }
+zerotrace-platform = { path = "../zerotrace-platform" }
+
+[dev-dependencies]
+zerotrace-vault = { path = "../zerotrace-vault" }
+zerotrace-kdf = { path = "../zerotrace-kdf" }

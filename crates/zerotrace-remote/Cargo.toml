@@ -1,0 +1,15 @@
+[package]
+name = "zerotrace-remote"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ed25519-dalek = "2.1.1"
+serde.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-crypto = { path = "../zerotrace-crypto" }
+zerotrace-kdf = { path = "../zerotrace-kdf" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }

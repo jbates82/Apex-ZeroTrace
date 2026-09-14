@@ -1,0 +1,894 @@
+================================================================================
+APEX ZEROTRACE
+User Manual for the Command Line
+Applies to version 0.21.0
+================================================================================
+
+This manual covers the two command line programs:
+
+    zt      the vault tool
+    ztd     the background service that watches a deadline
+
+It assumes you can open a terminal but not that you know anything about
+encryption. Terms are explained as they appear, and there is a glossary at the
+end.
+
+There is a separate manual, GUI-MANUAL.txt, covering the desktop window. The
+two do the same things; anything you set with one is visible to the other.
+
+
+--------------------------------------------------------------------------------
+CONTENTS
+--------------------------------------------------------------------------------
+
+  1.  What this program is for
+  2.  What it cannot do
+  3.  Running the programs
+  4.  How commands are written
+  5.  Passwords
+  6.  Vault commands
+  7.  Key protection commands
+  8.  Deadman commands
+  9.  Records commands
+  10. Destruction commands
+  11. Information commands
+  12. The ztd service
+  13. Exit codes
+  14. Worked examples
+  15. If something goes wrong
+  16. Glossary
+
+
+--------------------------------------------------------------------------------
+1. WHAT THIS PROGRAM IS FOR
+--------------------------------------------------------------------------------
+
+A vault is a single file that holds other files inside it, scrambled so that
+nobody without your password can read them. The names, sizes and dates of the
+files inside are scrambled too, so the vault does not reveal what sort of thing
+it holds.
+
+You can also set a deadline. If you do not check in before it passes, the
+program destroys the key and everything inside becomes permanently unreadable.
+This is off unless you turn it on.
+
+Adding a file to a vault copies it in. Your original is untouched.
+
+
+--------------------------------------------------------------------------------
+2. WHAT IT CANNOT DO
+--------------------------------------------------------------------------------
+
+        ================================================================
+         BEFORE YOU TRUST A VAULT WITH ANYTHING THAT MATTERS
+        ================================================================
+
+        A vault protects what is inside it. It says nothing about where
+        that file has been.
+
+        Every file you put in a vault existed somewhere first, on an
+        ordinary unencrypted disk. Deleting the original afterwards does
+        not remove it: deleting takes the name off a list and leaves the
+        contents on the disk, where free recovery programs will find
+        them. Emptying the recycle bin does not change that.
+
+        It is worse than the one file. Editors leave automatic backup
+        copies. Your computer keeps thumbnails and search indexes of what
+        is inside your documents. Windows and Mac take automatic system
+        snapshots without asking. Cloud folders keep their own copies.
+        Solid state drives keep spare space no program can reach.
+
+        This is not something ZeroTrace can fix. The file was there
+        before this program saw it.
+
+        THE ONE THING TO DO ABOUT IT
+
+        Turn on full-disk encryption: BitLocker on Windows, FileVault on
+        a Mac, LUKS on Linux. Use a real passphrase. Then all of those
+        leftovers are encrypted too, and somebody with your powered-off
+        computer has to break that before any of this matters.
+
+        Shut your computer down rather than leaving it asleep. A sleeping
+        computer is holding the key.
+
+        docs/BEFORE-THE-VAULT.txt explains the rest, including what to do
+        for genuinely sensitive material and which popular remedies do
+        not work.
+
+
+
+It cannot recover a lost password on an unprotected vault. Nobody can.
+
+It cannot protect copies you made earlier. Destroying a vault protects that
+file, not backups of it.
+
+It cannot protect you from somebody already inside your computer while a vault
+is open.
+
+It cannot stop somebody with your computer from closing ztd. Nothing can. What
+defends a vault against that person is key protection: stopping the watcher
+gives them unlimited time, and against a split key unlimited time is worth
+nothing. Stopping it also postpones nothing, since elapsed time comes from
+timestamps, and the next start records that the previous one ended without
+shutting down.
+
+It cannot detect somebody swapping your drive for an older copy of itself.
+
+It cannot enforce a deadline unless ztd is running. `zt` alone never destroys
+anything on a timer.
+
+
+--------------------------------------------------------------------------------
+3. RUNNING THE PROGRAMS
+--------------------------------------------------------------------------------
+
+After building with `cargo build --release`, the programs are in:
+
+    target/release/zt          (Windows: target\release\zt.exe)
+    target/release/ztd         (Windows: target\release\ztd.exe)
+
+Nothing installs them onto your system path, so you must say where they are.
+
+On Windows, in PowerShell, from the project folder:
+
+    .\target\release\zt.exe vault status myvault.azv
+
+The leading .\ is required. PowerShell will not run a program from the current
+folder without it. If you are already inside target\release, use:
+
+    .\zt.exe vault status C:\path\to\myvault.azv
+
+On Linux or macOS, from the project folder:
+
+    ./target/release/zt vault status myvault.azv
+
+To save typing, copy both programs somewhere already on your path, or add the
+release folder to your path.
+
+For the rest of this manual, commands are written as `zt ...` for brevity.
+Substitute the full path you need.
+
+
+--------------------------------------------------------------------------------
+4. HOW COMMANDS ARE WRITTEN
+--------------------------------------------------------------------------------
+
+Commands take the form:
+
+    zt <group> <action> <path> [options]
+
+For example:
+
+    zt vault create secrets.azv
+    zt deadman configure secrets.azv --enable --timeout 259200
+
+In this manual:
+
+    <path>      replace with the path to your vault file
+    <file>      replace with a path to an ordinary file
+    [something] optional
+    ...         may be repeated
+
+Running `zt` with no arguments, or with --help, prints a summary of every
+command.
+
+Options that take a value are written as two words:
+
+    --timeout 3600            correct
+    --timeout=3600            not recognized
+
+
+--------------------------------------------------------------------------------
+5. PASSWORDS
+--------------------------------------------------------------------------------
+
+Every command that opens a vault asks for a password. It is typed without being
+shown on screen.
+
+Passwords are never taken as command line arguments. That is deliberate: on
+most systems anything running on the machine can read the arguments of any
+running program, and shell history files keep them for ever.
+
+If there is no terminal available, for instance in a script, the password is
+read from standard input instead:
+
+    echo "my password" | zt vault status secrets.azv
+
+Be aware this puts the password in your shell history. It is intended for
+automation where you have thought about where the password comes from.
+
+There is no way to reset a lost password. Section 7 explains the only mechanism
+that can help.
+
+
+--------------------------------------------------------------------------------
+6. VAULT COMMANDS
+--------------------------------------------------------------------------------
+
+zt vault create <path> [options]
+
+    Creates a new, empty vault and asks for a password twice.
+
+    The password must be at least 15 characters and must not be built from too
+    few different ones. A long run of one character, or one short piece
+    repeated, is refused however long the result. Four or five unrelated words
+    joined by dashes clears all of it.
+
+    Options:
+      --suite xchacha|aes         which scrambling method. Default xchacha,
+                                  which is XChaCha20-Poly1305. Choose aes only
+                                  if a compliance rule requires AES-256-GCM.
+      --kdf interactive|sensitive how hard it is to test a password guess.
+                                  Default interactive, roughly 0.15 seconds per
+                                  attempt. sensitive is slower to open and
+                                  slower to attack.
+      --store                     do not compress before scrambling.
+
+    Example:
+      zt vault create secrets.azv --kdf sensitive
+
+zt vault status <path>
+
+    Shows what the vault uses and how much it holds: encryption method, key
+    derivation settings, compression, which components are required, number of
+    entries and total size.
+
+zt vault list <path>
+
+    Lists the files inside, with sizes and how many pieces each is stored in.
+
+zt vault import <path> <file> [<file> ...]
+
+    Adds one or more files. Each is compressed, scrambled and stored under its
+    own name.
+
+    If one file cannot be read, the others are still added and the failure is
+    reported. The command finishes with a failure status if anything was
+    skipped.
+
+    Example:
+      zt vault import secrets.azv notes.txt photo.jpg
+
+zt vault export <path> <directory>
+
+    Extracts everything into the directory you name, creating it if needed.
+
+    If one stored file is damaged, the rest are still extracted and the failures
+    are reported. During a recovery, everything still intact is worth having.
+
+    Each file either arrives complete and checked or not at all. A file that
+    fails partway through is removed rather than left as a partial decrypted
+    copy.
+
+    A destination that is a symbolic link, or that sits inside one, is refused:
+    decrypted files would be written wherever the link points rather than where
+    the path says.
+
+zt vault verify <path>
+
+    Decrypts every stored piece and checks it against a fingerprint recorded
+    when it was stored. Reports how many were checked and how many failed.
+
+    This checks your files. To check the program's own logs, see section 9.
+
+
+--------------------------------------------------------------------------------
+7. KEY PROTECTION COMMANDS
+--------------------------------------------------------------------------------
+
+WHY
+
+A password alone has a weakness unrelated to its quality. If somebody takes
+your drive and connects it to their own computer, they can copy the vault and
+try passwords privately for as long as they like. A deadman switch cannot help,
+because they are not running this program.
+
+Key protection splits the key into three pieces of which any two will open the
+vault: your password, and two token files kept elsewhere. A thief with the
+drive and your password has one piece and needs two.
+
+Two of three rather than three of three, because requiring all three would mean
+any single loss destroys everything, which is a likelier disaster than the
+burglary it defends against.
+
+zt split explain
+
+    Explains the model, including what it does not solve. Takes no vault.
+
+zt split status <path>
+
+    Shows whether a vault is protected, how many pieces exist, whether a stolen
+    drive would be enough, and whether losing one piece is survivable. Any
+    weaknesses are listed.
+
+zt split enroll <path> <token-file> <custodian-file>
+
+    Protects a vault. Writes two token files to the paths you give and asks for
+    your password.
+
+    Afterwards the password alone will not open the vault, anywhere.
+
+    Only a small part of the vault changes, so this is quick regardless of size.
+    Nothing stored is re-scrambled.
+
+    Refuses to overwrite a file that already exists.
+
+    To enroll without a second token, pass --no-custodian. This leaves no
+    redundancy: losing either the password or the single token destroys the
+    vault permanently. It has to be asked for explicitly for that reason.
+
+    Example:
+      zt split enroll secrets.azv /media/usb/token.txt /media/safe/custodian.txt
+
+WHERE TO KEEP THE TOKENS
+
+Not on the same drive as the vault: a thief taking the drive would get both
+pieces and you would have gained nothing.
+
+Not both in the same place either. Any two pieces open the vault, so whoever
+holds both tokens can open it without your password.
+
+Put one on a USB stick kept elsewhere; put the other somewhere different again,
+or with a person you trust.
+
+OPENING A PROTECTED VAULT
+
+Add --token to any command that opens the vault:
+
+    zt vault list secrets.azv --token /media/usb/token.txt
+
+Either token works; you do not have to remember which is which.
+
+If you have lost your password, supply both tokens and --no-password:
+
+    zt vault list secrets.azv --token /media/usb/token.txt \
+                              --token /media/safe/custodian.txt --no-password
+
+A file that is not a token is ignored rather than causing an error, so a
+mistaken --token does not prevent a correct one from working.
+
+zt split custody <vault> <custodian-dir> <custodian-token>
+
+    Hands one key component to a custodian, which returns it only while you
+    keep checking in and destroys it when you stop.
+
+    This is the only mechanism here that survives somebody taking over this
+    computer. Everything else runs on this machine, and whoever controls the
+    machine can close it. A custodian is not on this machine.
+
+    Put the custodian directory somewhere this computer is not: another
+    machine, a network share, a device elsewhere. On this disk it protects
+    nothing, exactly like a token stored beside the vault.
+
+    Options:
+      --timeout SECONDS   silence before the component is destroyed. Defaults
+                          to the vault's deadman timeout. Minimum 3600.
+
+    Delete your local copy of the custodian token once a check-in works.
+    Keeping it here puts the component back on the machine.
+
+zt split checkin <vault> --custodian <dir>
+
+    Tells the custodian you are still here, resetting its deadline.
+
+    The request is signed with a key derived from your password, which exists
+    only for as long as it takes to sign it. That is the whole point: somebody
+    who has this computer but not your password cannot check in, so they cannot
+    hold the deadline open. Somebody who cracks the password after the deadline
+    finds the component already destroyed.
+
+zt duress set <vault> <file> [<file> ...]
+
+    Sets a duress password, and the files it will show.
+
+    A duress password opens the vault into those files and destroys the real
+    contents as it does so, silently. Somebody watching sees an ordinary vault
+    open.
+
+    Asks for the real password, then the duress password.
+
+    The duress password must not resemble the real one. Two passwords a
+    keystroke apart will be confused under pressure, which is precisely when
+    this gets used.
+
+    THE REAL CONTENTS ARE GONE THE MOMENT IT IS USED. Not hidden, not
+    recoverable. Typing it by accident is the same as destroying the vault.
+
+    Nothing about a vault reveals whether a duress password exists. Every vault
+    carries the block that would hold one, filled with random bytes when unused,
+    so examining the file cannot answer the question.
+
+    What this does not defend against: somebody who images the drive and
+    examines it. The real data stays in the container as unreadable bytes, and a
+    small decoy inside a large container invites an obvious question. Against
+    that person it buys the destruction, not the deception.
+
+zt auth list <path>
+
+    Shows which authentication factors a vault requires.
+
+zt auth register-fido <path>
+
+    Reports NOT IMPLEMENTED. Hardware authenticator support has no transport in
+    this version.
+
+
+--------------------------------------------------------------------------------
+8. DEADMAN COMMANDS
+--------------------------------------------------------------------------------
+
+WHAT IT IS
+
+If you stop checking in for a period you choose, the vault's key is destroyed
+and everything inside becomes permanently unreadable.
+
+It is off until you turn it on, and even then nothing happens unless ztd is
+running with permission. See section 12.
+
+zt deadman configure <path>
+
+    With no options, prints the current policy.
+
+    Options:
+      --enable                    turn the policy on
+      --disable                   turn it off
+      --timeout SECONDS           how long without a check-in before the vault
+                                  is considered abandoned. Minimum 3600.
+      --heartbeat SECONDS         how often you intend to check in. Must be
+                                  shorter than the timeout.
+
+    The policy is refused if it could never be satisfied, or if the required
+    confidence is low enough that a merely switched-on computer could meet it.
+
+    Example, three days with a daily check-in:
+      zt deadman configure secrets.azv --enable --timeout 259200 --heartbeat 86400
+
+    Useful values:
+      3600      1 hour
+      86400     1 day
+      259200    3 days
+      604800    1 week
+      2592000   30 days
+
+zt deadman checkin <path>
+
+    Records that you are present, and resets the countdown. Asks for your
+    password, and a token if the vault is protected.
+
+    The password is required on purpose. If checking in cost nothing, anybody
+    able to reach the machine could keep the vault alive indefinitely.
+
+zt deadman status <path>
+
+    Shows whether the policy is on, your presence score against what is
+    required, how long since your last check-in, the computed state, the
+    recorded state, and the time remaining.
+
+    The states are:
+      NORMAL     presence is above what you asked for
+      WARNING    it has fallen below
+      CRITICAL   it has fallen well below
+      ARMED      the timeout has passed
+
+    Reaching ARMED destroys nothing by itself.
+
+THE THREE SETTINGS
+
+  Timeout            how long you may be silent before being considered gone.
+  Heartbeat          how often you mean to check in. Within it, a check-in
+                     counts fully; after it, your score falls steadily to
+                     nothing at the timeout. A shorter heartbeat is stricter.
+  Required           the score you must stay above. Cannot be 60 or below,
+  confidence         because a lower bar could be met by the computer merely
+                     being on and connected, which is not evidence of anything.
+
+
+--------------------------------------------------------------------------------
+9. RECORDS COMMANDS
+--------------------------------------------------------------------------------
+
+These check the program's own logs, not your files.
+
+zt audit show <path>
+
+    Prints the history: openings, failed attempts, files added, check-ins.
+
+zt audit verify <path>
+
+    Checks the history has not been edited, deleted from, or reordered. Each
+    entry seals the one before it, so any alteration breaks everything after it.
+
+    A line that cannot be read is reported as a break at that line, and the
+    readable history is still available.
+
+zt journal verify <path>
+
+    Checks the record of deadman states, and cross-checks it against the audit
+    log.
+
+    The cross-check exists because a chain cannot notice entries removed from
+    its own end: a shortened chain still looks correct on its own. The journal
+    remembers how long the log should be.
+
+    Reports FAILED if entries have been removed from the end of the audit log.
+
+
+--------------------------------------------------------------------------------
+10. DESTRUCTION COMMANDS
+--------------------------------------------------------------------------------
+
+zt destroy dry-run <path>
+
+    Completely safe. Lists exactly what destruction would do and changes
+    nothing. Run this before trusting the deadman switch.
+
+zt destroy status <path>
+
+    Shows whether destruction has been authorized, whether it is finished, and
+    whether an interrupted destruction needs resuming.
+
+zt panic lock <path>
+
+    Completely safe. Clears anything held in memory. Never destroys anything.
+
+zt panic destroy <path>
+
+    Permanent. Overwrites the key. Afterwards no password, no token and no
+    backup of the key will open that vault again.
+
+    Requires your password, a token if the vault is protected, and the word
+    DESTROY typed exactly when prompted. Anything else aborts with nothing
+    changed.
+
+    Destroying needs the same pieces as opening, deliberately: somebody who
+    cannot read your vault should not be able to destroy it either.
+
+    Afterwards a report says what was and was not achieved. It does not
+    overstate: anything that could not be confirmed is marked as such.
+
+    Copies made earlier are unaffected and still open normally.
+
+
+--------------------------------------------------------------------------------
+11. INFORMATION COMMANDS
+--------------------------------------------------------------------------------
+
+zt security audit
+
+    Lists what this build actually enforces, and what it does not. Takes no
+    vault. Worth reading once.
+
+zt platform report <path>
+
+    Reports what your filesystem allows. On some filesystems, overwriting a
+    file does not reach the original data at all, and this says so rather than
+    claiming an effect it cannot have.
+
+    It also reports whether the vault sits on a volume where the operating
+    system keeps prior copies of files, taken automatically. Destroying a vault
+    does not touch those: cryptographic erasure removes the key from this
+    container, and a snapshot holds its own copy with the key intact.
+
+    ZeroTrace does not delete snapshots and will not. That needs administrator
+    rights and is the most recognisable thing ransomware does, which is why
+    antivirus products treat it as a signature. Keep vaults on a removable
+    drive or a volume without snapshots, or use remote custody: a snapshot
+    cannot capture a component that was never on the machine.
+
+zt service unit <path> [options]
+
+    Prints a service definition for your operating system, to review and
+    install so that ztd starts at boot and restarts after a crash.
+
+    Options:
+      --supervisor systemd|launchd|windows   default: this platform's own
+      --interval SECONDS                     how often to check
+      --allow-destruction                    permit destruction. Off by default.
+
+    ZeroTrace does not install this itself. Writing to a service directory
+    needs privileges a vault program should not hold.
+
+zt recovery explain
+zt split explain
+
+    Explanations of threshold recovery and the split key model.
+
+zt enterprise keygen
+
+    Generates an organization signing key for signed remote commands.
+
+
+--------------------------------------------------------------------------------
+12. THE ZTD SERVICE
+--------------------------------------------------------------------------------
+
+`zt` never destroys a vault on a timer. That is ztd's job.
+
+ztd once <vault> [options]
+
+    Evaluates the policy once and exits. Useful for checking what would happen.
+
+ztd watch <vault> [options]
+
+    Evaluates repeatedly until stopped.
+
+    Options:
+      --interval SECONDS      how often to check. Default 60.
+      --allow-destruction     permit destruction at the deadline. Off by
+                              default: without it, ztd follows the countdown,
+                              says so when the deadline passes, and carries on
+                              watching without destroying anything. Check in
+                              and it follows the countdown again.
+      --dry-run               report what would happen and change nothing.
+      --profile standard|enhanced|maximum
+                              how much secondary cleaning to attempt after the
+                              key is destroyed.
+
+    Example, watching without any power to destroy:
+      ztd watch secrets.azv --interval 60
+
+    Example, armed:
+      ztd watch secrets.azv --interval 300 --allow-destruction
+
+ABOUT --interval
+
+This is how often ztd wakes up and looks, in seconds. It is not the deadline
+and does not affect whether the deadline passes, only how promptly it is
+noticed.
+
+With a three day timeout, 300 is fine. With a one hour timeout, use 30 or 60.
+Elapsed time is measured from recorded timestamps, so a machine that was asleep
+or a service that was not running does not gain you any extra time.
+
+ONE SERVICE PER VAULT
+
+ztd records itself in a file beside the vault while it runs. Each vault is
+tracked separately, so you can watch several at once.
+
+Starting a second service for the same vault is refused: two would interfere
+with each other and only one could be stopped by name.
+
+If a service is stopped abruptly, its record is left behind. The next start
+notices the process is gone and takes over, saying so.
+
+STOPPING
+
+From the desktop window, press "Stop watching".
+
+From a terminal, either interrupt it with Ctrl-C, or create a file next to the
+vault with .watch.stop added to the name:
+
+    touch secrets.azv.watch.stop
+
+ztd notices within about a second, tidies up and exits.
+
+WHAT SURVIVES WHAT
+
+A ztd started in a terminal dies when that terminal closes. It does not survive
+logging out or restarting.
+
+There are two ways to make it come back.
+
+Per user, needing no administrator rights: the desktop window has a "Restart at
+login" panel that writes one small file to your own startup folder. Nothing is
+installed for other accounts.
+
+System wide, needing administrator rights: `zt service unit` prints a
+definition that starts the watcher whether or not anybody logs in.
+
+The difference matters. A per-user entry starts when that account logs in, so a
+computer sitting at its login screen is not watching anything. Time still
+passes either way, and a watcher that starts late will notice a deadline that
+passed while the machine was off.
+
+
+--------------------------------------------------------------------------------
+13. EXIT CODES
+--------------------------------------------------------------------------------
+
+    0    the command succeeded
+    1    the command failed
+
+Commands that process several items return 1 if any item failed, even when
+others succeeded. `zt vault import` with one unreadable file adds the rest and
+returns 1.
+
+`zt vault verify`, `zt audit verify` and `zt journal verify` return 1 when they
+find a problem, so they can be used in scripts.
+
+
+--------------------------------------------------------------------------------
+14. WORKED EXAMPLES
+--------------------------------------------------------------------------------
+
+CREATING A VAULT AND ADDING FILES
+
+    zt vault create secrets.azv
+    zt vault import secrets.azv taxes.pdf notes.txt
+    zt vault list secrets.azv
+
+PROTECTING IT AGAINST A STOLEN DRIVE
+
+    zt split enroll secrets.azv /media/usb/token.txt /media/safe/custodian.txt
+    zt split status secrets.azv
+
+    From now on, every command that opens it needs a token:
+
+    zt vault list secrets.azv --token /media/usb/token.txt
+
+RECOVERING WHEN THE PASSWORD IS LOST
+
+    zt vault export secrets.azv ./recovered \
+        --token /media/usb/token.txt \
+        --token /media/safe/custodian.txt \
+        --no-password
+
+SETTING UP A THREE DAY DEADMAN SWITCH, SAFELY
+
+    zt destroy dry-run secrets.azv
+    zt deadman configure secrets.azv --enable --timeout 259200 --heartbeat 86400
+
+    Watch it without any power to destroy, and confirm it behaves as expected:
+
+    ztd watch secrets.azv --interval 300
+
+    Only when satisfied, arm it:
+
+    ztd watch secrets.azv --interval 300 --allow-destruction
+
+CHECKING IN
+
+    zt deadman checkin secrets.azv --token /media/usb/token.txt
+    zt deadman status secrets.azv
+
+CHECKING NOTHING HAS BEEN TAMPERED WITH
+
+    zt vault verify secrets.azv --token /media/usb/token.txt
+    zt audit verify secrets.azv
+    zt journal verify secrets.azv
+
+MAKING THE SERVICE SURVIVE A RESTART
+
+    zt service unit secrets.azv --interval 300 --allow-destruction > zerotrace.service
+
+    Review that file, then install it as your operating system requires.
+
+
+--------------------------------------------------------------------------------
+15. IF SOMETHING GOES WRONG
+--------------------------------------------------------------------------------
+
+"The term 'zt' is not recognized..." (Windows)
+    The program is not on your path. Use the full path, or .\zt.exe from the
+    folder containing it. See section 3.
+
+"authentication failed: wrong credentials, or the vault has been modified"
+    Wrong password, missing token, or an altered file. The message is
+    deliberately vague, because saying which would help somebody guessing.
+
+"this vault is split protected and needs a key component as well as its
+password"
+    Add --token <file>.
+
+"a watcher is already running for this vault as process N"
+    A service is already watching. Stop it first, or use the existing one.
+
+"the split bundle ... is missing"
+    The file ending .split must sit beside the vault. Without it the vault
+    cannot be opened by anyone, including you. Restore it from a backup.
+
+"a deadman timeout of Ns is below the 3600s minimum"
+    Timeouts under an hour are refused. A very short deadline turns an ordinary
+    interruption, such as a flight, into permanent data loss.
+
+"the heartbeat interval must be shorter than the timeout"
+    Otherwise you could never satisfy your own policy.
+
+Nothing happened when the deadline passed
+    ztd was not running, or was running without --allow-destruction.
+
+A file was skipped during import
+    It could not be read. The others were still added. The message names it.
+
+
+--------------------------------------------------------------------------------
+16. GLOSSARY
+--------------------------------------------------------------------------------
+
+AEAD
+    Authenticated encryption. Scrambling that also detects alteration, so a
+    changed file is rejected rather than decrypted into nonsense.
+
+Argon2id
+    The method that turns your password into a key. Deliberately slow and
+    memory-hungry, so testing millions of guesses is expensive.
+
+ARMED
+    The deadman state meaning the deadline has passed. Nothing has been
+    destroyed at this point.
+
+Audit log
+    A record of what happened to a vault. Linked so alterations are detectable.
+
+Check in
+    Telling the program you are present, by entering your password.
+
+Chunk
+    A piece of a stored file. Large files are stored in several, each scrambled
+    separately.
+
+Component
+    One of the pieces needed to open a protected vault: your password, a
+    recovery token, or a custodian token.
+
+Cryptographic erasure
+    Destroying data by destroying its key rather than overwriting it. More
+    reliable on modern drives, which move data invisibly and may retain old
+    copies you cannot address.
+
+Custodian token
+    The second token file, meant to be held somewhere separate again.
+
+Deadman switch
+    A mechanism that acts if you stop responding.
+
+Heartbeat
+    How often you intend to check in.
+
+Journal
+    The record of deadman states over time.
+
+Key
+    The secret value that scrambles and unscrambles your files. Your password
+    is not the key; it protects the key.
+
+Manifest
+    The scrambled index of a vault's contents. Why names and sizes are hidden.
+
+Master key
+    The one key everything in a vault is scrambled with. Destroying it makes
+    the vault permanently unreadable.
+
+Presence score
+    A number from 0 to 100 estimating confidence that you are around. Entering
+    your password sets it to 100. See "ambient signals" for what does not.
+
+Ambient signals
+    Weak evidence that the computer is alive, as opposed to proof that you are:
+    the machine being switched on, reachable on the network, having its
+    keyboard used, or having a session unlocked.
+
+    None of these say anything about you. A burglar at your desk produces every
+    one of them, and so does a machine left running in an empty house. They are
+    capped at 60 points in total, which is why required confidence cannot be
+    set at or below 60.
+
+Recovery token
+    The first token file, holding one piece of the key.
+
+Split key
+    Dividing a key into pieces so no single one is enough.
+
+Threshold
+    How many pieces are needed. Here, two out of three.
+
+Timeout
+    How long you may go without checking in.
+
+Token
+    A small file holding one piece of a key. Keep it where the vault is not.
+
+Vault
+    A single file holding your files in scrambled form.
+
+zt
+    The vault tool. Creates, opens and manages vaults. Never destroys on a
+    timer.
+
+ztd
+    The background service that watches a deadline and can act on it.
+
+
+================================================================================
+End of manual. Version 0.21.0.
+================================================================================

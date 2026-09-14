@@ -1,0 +1,15 @@
+[package]
+name = "zerotrace-crypto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chacha20poly1305 = "0.10"
+aes-gcm = "0.10"
+hkdf.workspace = true
+sha2.workspace = true
+rand.workspace = true
+serde.workspace = true
+zerotrace-core = { path = "../zerotrace-core" }
+zerotrace-secure-memory = { path = "../zerotrace-secure-memory" }
